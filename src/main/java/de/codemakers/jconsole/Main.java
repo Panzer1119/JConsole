@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -145,6 +146,7 @@ public class Main {
                                     name = "$" + COUNTER.getAndAdd(1);
                                 }
                                 DATA.put(name, data);
+                                JAVA_SCRIPT_ENGINE.put(name, data);
                                 print = String.format("%s ==> %s", name, data);
                             }
                             if (response.isPrint()) {
@@ -173,8 +175,9 @@ public class Main {
         if (input.startsWith(COMMAND_PREFIX)) {
             return handleCommand(input.substring(COMMAND_PREFIX.length()));
         }
-        final Object response = JAVA_SCRIPT_ENGINE.executeLarge(input).direct();
-        return new Response(response, true, response != null, false, null); //FIXME noch das mit dem auto_add_return und auto_save_responses machen
+        final AtomicReference<Throwable> throwable = new AtomicReference<>(null);
+        final Object response = JAVA_SCRIPT_ENGINE.executeLarge(input).direct((t) -> throwable.set(t));
+        return new Response(throwable == null ? response : throwable, true, response != null, throwable != null, null); //FIXME noch das mit dem auto_add_return und auto_save_responses machen
     }
     
     private static final Response handleCommand(String command_string) {
